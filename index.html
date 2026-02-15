@@ -267,6 +267,31 @@
         .operation-btn[data-op="mix"] { border-color: #00bcd4; background: linear-gradient(135deg, #fff3e0 25%, #e3f2fd 25%, #e3f2fd 50%, #f3e5f5 50%, #f3e5f5 75%, #ffebee 75%); }
         .operation-btn[data-op="mix"].selected { border-color: #00bcd4; border-width: 4px; }
 
+        /* 難易度ボタン */
+        .difficulty-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .difficulty-btn {
+            width: 100px;
+            height: 90px;
+            font-size: 16px;
+            border: 3px solid #ccc;
+            border-radius: 15px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .difficulty-btn:hover {
+            transform: scale(1.05);
+        }
+        .difficulty-btn.selected {
+            border-color: #4CAF50;
+            background-color: #e8f5e9;
+        }
+
         /* スライダー */
         .slider-container {
             text-align: center;
@@ -726,6 +751,22 @@
         </div>
 
         <div class="slider-container">
+            <div class="slider-label">なんいど</div>
+            <div class="difficulty-buttons">
+                <button class="difficulty-btn selected" data-difficulty="easy">
+                    <div>🌱</div>
+                    <div>かんたん</div>
+                    <div style="font-size: 12px; color: #999;">1けた</div>
+                </button>
+                <button class="difficulty-btn" data-difficulty="normal">
+                    <div>🌟</div>
+                    <div>ふつう</div>
+                    <div style="font-size: 12px; color: #999;">2けた</div>
+                </button>
+            </div>
+        </div>
+
+        <div class="slider-container">
             <div class="slider-label">もんだいのかず</div>
             <div class="slider-value"><span id="question-count">10</span><span>もん</span></div>
             <input type="range" id="question-slider" min="10" max="100" step="5" value="10">
@@ -785,6 +826,7 @@
         // グローバル変数
         let currentUser = null;
         let selectedOperation = null;
+        let selectedDifficulty = 'easy';
         let problems = [];
         let answers = [];
         let questionCount = 10;
@@ -995,23 +1037,23 @@
         });
 
         // 履歴キーを生成
-        function getHistoryKey(operation, count) {
-            return `${operation}_${count}`;
+        function getHistoryKey(operation, difficulty, count) {
+            return `${operation}_${difficulty}_${count}`;
         }
 
         // 履歴を取得
-        function getHistory(user, operation, count) {
+        function getHistory(user, operation, difficulty, count) {
             const data = getUserData();
-            const key = getHistoryKey(operation, count);
+            const key = getHistoryKey(operation, difficulty, count);
             if (!data[user]) return [];
             const history = data[user].history || data[user];
             return history[key] || [];
         }
 
         // 履歴を保存（最新5件）
-        function saveHistory(user, operation, count, score, time) {
+        function saveHistory(user, operation, difficulty, count, score, time) {
             const data = getUserData();
-            const key = getHistoryKey(operation, count);
+            const key = getHistoryKey(operation, difficulty, count);
 
             if (!data[user]) {
                 data[user] = { avatar: '🧒', history: {} };
@@ -1073,6 +1115,15 @@
             });
         });
 
+        // 難易度選択
+        document.querySelectorAll('.difficulty-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedDifficulty = btn.dataset.difficulty;
+            });
+        });
+
         // タイマー開始
         function startTimer() {
             startTime = Date.now();
@@ -1102,17 +1153,28 @@
         // 1問を生成するヘルパー関数
         function generateOneProblem(operation) {
             let a, b, answer, expression;
+            const isEasy = selectedDifficulty === 'easy';
 
             switch (operation) {
                 case 'add':
-                    a = Math.floor(Math.random() * 90) + 10;
-                    b = Math.floor(Math.random() * 90) + 10;
+                    if (isEasy) {
+                        a = Math.floor(Math.random() * 9) + 1;  // 1〜9
+                        b = Math.floor(Math.random() * 9) + 1;  // 1〜9
+                    } else {
+                        a = Math.floor(Math.random() * 90) + 10;  // 10〜99
+                        b = Math.floor(Math.random() * 90) + 10;  // 10〜99
+                    }
                     answer = a + b;
                     expression = `${a} + ${b} = `;
                     break;
                 case 'sub':
-                    a = Math.floor(Math.random() * 90) + 10;
-                    b = Math.floor(Math.random() * a) + 1;
+                    if (isEasy) {
+                        a = Math.floor(Math.random() * 9) + 1;  // 1〜9
+                        b = Math.floor(Math.random() * a) + 1;  // 1〜a
+                    } else {
+                        a = Math.floor(Math.random() * 90) + 10;  // 10〜99
+                        b = Math.floor(Math.random() * a) + 1;
+                    }
                     answer = a - b;
                     expression = `${a} - ${b} = `;
                     break;
@@ -1466,10 +1528,10 @@
             const percentage = Math.round((correctCount / questionCount) * 100);
 
             // 履歴を取得（保存前）
-            const history = getHistory(currentUser, selectedOperation, questionCount);
+            const history = getHistory(currentUser, selectedOperation, selectedDifficulty, questionCount);
 
             // 履歴を保存
-            saveHistory(currentUser, selectedOperation, questionCount, percentage, finalTimeSeconds);
+            saveHistory(currentUser, selectedOperation, selectedDifficulty, questionCount, percentage, finalTimeSeconds);
 
             // 表示更新
             document.getElementById('score').textContent = percentage;
